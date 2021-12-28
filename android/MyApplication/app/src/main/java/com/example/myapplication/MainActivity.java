@@ -3,16 +3,20 @@ package com.example.myapplication;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
-import java.lang.reflect.Array;
+import java.net.DatagramPacket;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
-
     private ArrayList<String> hostArrayList = new ArrayList<String>();
     private ArrayAdapter<String> adapter;
+    private static final int servicePort = 5775;
+    private PacketListener listener;
+    private static final int updatePeriod = 1000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,9 +25,19 @@ public class MainActivity extends AppCompatActivity {
         ListView listView = findViewById(R.id.hostList);
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, hostArrayList);
         listView.setAdapter(adapter);
-        for (int i=1; i<12; i++) {
-            addHost("Item " + i);
-        }
+        listener = new PacketListener(servicePort);
+
+        Handler h = new Handler();
+        h.postDelayed(new Runnable(){
+            @Override
+            public void run() {
+                if (listener.countPackets() > 0) {
+                    DatagramPacket p = listener.popPacket();
+                    addHost(p.getAddress().toString());
+                }
+                h.postDelayed(this, updatePeriod);
+            }
+        }, updatePeriod);
     }
 
     private void addHost(String name) {
